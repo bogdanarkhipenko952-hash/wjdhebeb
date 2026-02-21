@@ -1,0 +1,8 @@
+{
+  "name": "Pulse Messenger",
+  "description": "Next-generation private messaging with a high-performance midnight interface.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
