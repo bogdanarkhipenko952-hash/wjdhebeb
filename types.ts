@@ -1,6 +1,6 @@
 
 export type Role = 'user' | 'assistant';
-export type MessageType = 'text' | 'voice' | 'video_circle' | 'gift';
+export type MessageType = 'text' | 'voice' | 'video_circle' | 'gift' | 'image' | 'video' | 'list' | 'file' | 'location' | 'sticker';
 
 export interface NFTGift {
   id: string;
@@ -8,6 +8,13 @@ export interface NFTGift {
   imageUrl: string;
   collection: string;
   isPinned?: boolean;
+  description?: string;
+  date?: string;
+  number?: number;
+  totalIssued?: number;
+  attributes?: { trait: string; value: string; rarity?: string }[];
+  ownerId?: string;
+  ownerName?: string;
 }
 
 export interface Message {
@@ -18,6 +25,10 @@ export interface Message {
   mediaUrl?: string; // Base64 or Blob URL
   duration?: number;
   gift?: NFTGift;
+  listItems?: { id: string; text: string; checked: boolean }[];
+  location?: { lat: number; lng: number; address?: string };
+  fileSize?: string;
+  fileName?: string;
   timestamp: Date;
   status: 'sent' | 'delivered' | 'read';
 }
@@ -33,6 +44,8 @@ export interface Contact {
   isFavorite?: boolean;
   isPinned?: boolean;
   isSelf?: boolean;
+  isBot?: boolean;
+  username?: string;
   gifts?: NFTGift[];
 }
 
@@ -45,4 +58,5 @@ export interface UserProfile {
   bio?: string;
   phoneNumber?: string;
   gifts?: NFTGift[];
+  pinnedGifts?: NFTGift[];
 }

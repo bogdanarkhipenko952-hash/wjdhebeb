@@ -4,7 +4,7 @@ import { Contact, UserProfile } from './types';
 export const CURRENT_USER: UserProfile = {
   id: 'pulse-' + Math.random().toString(36).substr(2, 9),
   name: 'Пользователь ' + Math.floor(Math.random() * 1000),
-  avatar: `https://picsum.photos/seed/${Math.random()}/200`,
+  avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=PulseUser`,
   email: 'local@pulse.io',
   username: 'user_' + Math.floor(Math.random() * 10000),
   bio: 'В локальной сети Pulse. Шифрование включено.',
