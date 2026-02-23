@@ -1,24 +1,101 @@
-
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { Contact } from '../types';
 import Avatar from './Avatar';
-import { Search, Zap, Star, Pin } from 'lucide-react';
+import { Search, Zap, Star, Pin, Archive } from 'lucide-react';
 
 interface ChatListProps {
   activeContactId: string | null;
   onSelectContact: (contact: Contact) => void;
   onTogglePin?: (id: string) => void;
+  onArchive?: (id: string) => void;
   searchQuery: string;
   contactsOverride?: Contact[];
   stories?: any[];
   onAddStory?: () => void;
 }
 
+const ChatItem = ({ contact, activeContactId, onSelectContact, onTogglePin, onArchive }: any) => {
+  const x = useMotionValue(0);
+  const opacity = useTransform(x, [-100, -50], [1, 0]);
+  const archiveOpacity = useTransform(x, [-100, -20], [1, 0]);
+  const archiveScale = useTransform(x, [-100, -20], [1, 0.5]);
+
+  const handleDragEnd = (event: any, info: any) => {
+    if (info.offset.x < -100 && onArchive) {
+      onArchive(contact.id);
+    }
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl mb-2">
+      {/* Archive Background Action */}
+      <motion.div 
+        style={{ opacity: archiveOpacity, scale: archiveScale }}
+        className="absolute inset-y-0 right-0 w-24 bg-zinc-800 flex items-center justify-center rounded-r-3xl z-0"
+      >
+        <Archive className="text-white" size={20} />
+      </motion.div>
+
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={{ left: 0.5, right: 0 }}
+        onDragEnd={handleDragEnd}
+        style={{ x }}
+        className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 group relative border cursor-pointer bg-[#121212] z-10 ${
+          activeContactId === contact.id
+            ? 'bg-white/10 border-white/20 shadow-lg'
+            : 'hover:bg-white/5 border-transparent hover:border-white/10'
+        }`}
+        onClick={() => onSelectContact(contact)}
+      >
+        <div className="relative">
+          <Avatar src={contact.avatar} name={contact.name} status={contact.status} size="lg" />
+          {contact.isFavorite && !contact.isSelf && (
+            <div className="absolute -top-1 -right-1 bg-black rounded-full p-0.5 border border-zinc-800">
+              <Star size={8} className="fill-amber-400 text-amber-400" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 text-left overflow-hidden">
+          <div className="flex justify-between items-baseline mb-0.5">
+            <h3 className={`font-medium text-[15px] truncate transition-colors flex items-center gap-2 ${
+              activeContactId === contact.id ? 'text-white' : 'text-zinc-200 group-hover:text-white'
+            }`}>
+              {contact.name}
+            </h3>
+            <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">Online</span>
+          </div>
+          <p className="text-xs text-zinc-400 truncate leading-tight group-hover:text-zinc-300 transition-colors font-light">
+            {contact.lastMessage || contact.bio}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onTogglePin && !contact.isSelf && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onTogglePin(contact.id); }}
+              className={`p-2 rounded-full transition-all ${contact.isPinned ? 'text-white bg-white/10' : 'text-zinc-600 hover:text-white hover:bg-white/5 opacity-0 group-hover:opacity-100'}`}
+            >
+              <Pin size={14} className={contact.isPinned ? "fill-white" : ""} />
+            </button>
+          )}
+          {activeContactId === contact.id && (
+            <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const ChatList: React.FC<ChatListProps> = ({ 
   activeContactId, 
   onSelectContact, 
   onTogglePin, 
+  onArchive,
   searchQuery, 
   contactsOverride = [],
   stories = [],
@@ -148,57 +225,16 @@ const ChatList: React.FC<ChatListProps> = ({
       <AnimatePresence>
         {filteredContacts.length > 0 ? (
           filteredContacts.map((contact, index) => (
-            <motion.div
+            <ChatItem 
               key={contact.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 group relative border cursor-pointer ${
-                activeContactId === contact.id
-                  ? 'bg-white/10 border-white/20 shadow-lg'
-                  : 'hover:bg-white/5 border-transparent hover:border-white/10'
-              }`}
-              onClick={() => onSelectContact(contact)}
-            >
-            <div className="relative">
-              <Avatar src={contact.avatar} name={contact.name} status={contact.status} size="lg" />
-              {contact.isFavorite && !contact.isSelf && (
-                <div className="absolute -top-1 -right-1 bg-black rounded-full p-0.5 border border-zinc-800">
-                  <Star size={8} className="fill-amber-400 text-amber-400" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 text-left overflow-hidden">
-              <div className="flex justify-between items-baseline mb-0.5">
-                <h3 className={`font-medium text-[15px] truncate transition-colors flex items-center gap-2 ${
-                  activeContactId === contact.id ? 'text-white' : 'text-zinc-200 group-hover:text-white'
-                }`}>
-                  {contact.name}
-                </h3>
-                <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">Online</span>
-              </div>
-              <p className="text-xs text-zinc-400 truncate leading-tight group-hover:text-zinc-300 transition-colors font-light">
-                {contact.lastMessage || contact.bio}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {onTogglePin && !contact.isSelf && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onTogglePin(contact.id); }}
-                  className={`p-2 rounded-full transition-all ${contact.isPinned ? 'text-white bg-white/10' : 'text-zinc-600 hover:text-white hover:bg-white/5 opacity-0 group-hover:opacity-100'}`}
-                >
-                  <Pin size={14} className={contact.isPinned ? "fill-white" : ""} />
-                </button>
-              )}
-              {activeContactId === contact.id && (
-                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
-              )}
-            </div>
-          </motion.div>
-        ))
-      ) : (
+              contact={contact}
+              activeContactId={activeContactId}
+              onSelectContact={onSelectContact}
+              onTogglePin={onTogglePin}
+              onArchive={onArchive}
+            />
+          ))
+        ) : (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

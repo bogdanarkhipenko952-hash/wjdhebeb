@@ -53,6 +53,7 @@ function App() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showAddPeerModal, setShowAddPeerModal] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [archived, setArchived] = useState<Set<string>>(new Set());
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   const [userProfile, setUserProfile] = useState<UserProfile>(user || {
@@ -158,7 +159,7 @@ function App() {
       if (usersRes.ok) {
         const users = await usersRes.json();
         const uniqueUsers = Array.from(new Map(users.map((u: any) => [u.id, u])).values());
-        setPeers(uniqueUsers.filter((u: any) => u.id !== user.id));
+        setPeers(uniqueUsers.filter((u: any) => u.id !== user.id && u.id !== 'plus_bot'));
       }
 
       // Fetch contacts
@@ -318,17 +319,27 @@ function App() {
     });
   };
 
+  const toggleArchive = (id: string) => {
+    setArchived(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const allVisibleContacts = useMemo(() => {
     const list = [savedMessagesContact, plusBot, ...peers.map(p => ({
       ...p,
-      isFavorite: favorites.has(p.id)
+      isFavorite: favorites.has(p.id),
+      isArchived: archived.has(p.id)
     }))];
     return list.sort((a, b) => {
       if (a.isSelf) return -1;
       if (b.isSelf) return 1;
       return (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0);
     });
-  }, [peers, savedMessagesContact, favorites, plusBot]);
+  }, [peers, savedMessagesContact, favorites, plusBot, archived]);
 
   const handleSendToNetwork = (receiverId: string, message: Message) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -483,8 +494,10 @@ function App() {
       return peers.filter(p => p.username?.toLowerCase().includes(query));
     }
     return allVisibleContacts.filter(c => 
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      c.username?.toLowerCase().includes(searchQuery.toLowerCase())
+      !c.isArchived && (
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        c.username?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
     );
   }, [peers, allVisibleContacts, searchQuery]);
 
@@ -496,7 +509,7 @@ function App() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex h-full w-full text-white overflow-hidden font-sans bg-[#121212]"
+      className="flex h-full w-full text-white overflow-hidden font-sans bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-800 via-zinc-950 to-black"
     >
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-20 border-r border-zinc-800 bg-[#0a0a0a] items-center py-8 shrink-0">
@@ -662,6 +675,7 @@ function App() {
                     activeContactId={selectedContact?.id || null} 
                     onSelectContact={setSelectedContact} 
                     onTogglePin={toggleFavorite}
+                    onArchive={toggleArchive}
                     searchQuery={searchQuery} 
                     contactsOverride={filteredContacts} 
                     stories={groupedStories}

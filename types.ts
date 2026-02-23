@@ -43,6 +43,7 @@ export interface Contact {
   lastMessage?: string;
   isFavorite?: boolean;
   isPinned?: boolean;
+  isArchived?: boolean;
   isSelf?: boolean;
   isBot?: boolean;
   username?: string;
