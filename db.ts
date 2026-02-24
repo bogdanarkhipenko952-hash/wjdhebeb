@@ -3,6 +3,13 @@ import { join } from 'path';
 
 const db = new Database('pulse.db');
 
+// Optimize SQLite for high concurrency
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
+db.pragma('cache_size = -64000'); // 64MB cache
+db.pragma('temp_store = MEMORY');
+db.pragma('mmap_size = 30000000000'); // Use memory mapping
+
 // Initialize database schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -25,6 +32,8 @@ db.exec(`
     content TEXT,
     type TEXT DEFAULT 'text',
     media_url TEXT,
+    amount REAL,
+    currency TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(sender_id) REFERENCES users(id),
     FOREIGN KEY(receiver_id) REFERENCES users(id)
@@ -70,5 +79,13 @@ db.exec(`
     UNIQUE(user_id, contact_id)
   );
 `);
+
+// Migrations
+try {
+  db.prepare('ALTER TABLE messages ADD COLUMN amount REAL').run();
+} catch (e) {}
+try {
+  db.prepare('ALTER TABLE messages ADD COLUMN currency TEXT').run();
+} catch (e) {}
 
 export default db;

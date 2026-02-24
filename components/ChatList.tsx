@@ -28,11 +28,11 @@ const ChatItem = ({ contact, activeContactId, onSelectContact, onTogglePin, onAr
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl mb-2">
+    <div className="relative overflow-hidden rounded-[24px] mb-2">
       {/* Archive Background Action */}
       <motion.div 
         style={{ opacity: archiveOpacity, scale: archiveScale }}
-        className="absolute inset-y-0 right-0 w-24 bg-zinc-800 flex items-center justify-center rounded-r-3xl z-0"
+        className="absolute inset-y-0 right-0 w-24 bg-red-500 flex items-center justify-center rounded-r-[24px] z-0"
       >
         <Archive className="text-white" size={20} />
       </motion.div>
@@ -43,47 +43,44 @@ const ChatItem = ({ contact, activeContactId, onSelectContact, onTogglePin, onAr
         dragElastic={{ left: 0.5, right: 0 }}
         onDragEnd={handleDragEnd}
         style={{ x }}
-        className={`w-full flex items-center gap-4 p-4 rounded-3xl transition-all duration-300 group relative border cursor-pointer bg-[#121212] z-10 ${
+        className={`w-full flex items-center gap-3 px-3 py-3 rounded-[24px] transition-all duration-200 group relative cursor-pointer z-10 ${
           activeContactId === contact.id
-            ? 'bg-white/10 border-white/20 shadow-lg'
-            : 'hover:bg-white/5 border-transparent hover:border-white/10'
+            ? 'bg-zinc-100 dark:bg-[#1a1a1a] text-black dark:text-white shadow-xl border border-black/5 dark:border-white/5'
+            : 'hover:bg-zinc-100 dark:hover:bg-[#1a1a1a]/50 text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white'
         }`}
         onClick={() => onSelectContact(contact)}
       >
         <div className="relative">
-          <Avatar src={contact.avatar} name={contact.name} status={contact.status} size="lg" />
+          <Avatar src={contact.avatar} name={contact.name} status={contact.status} size="md" />
           {contact.isFavorite && !contact.isSelf && (
-            <div className="absolute -top-1 -right-1 bg-black rounded-full p-0.5 border border-zinc-800">
-              <Star size={8} className="fill-amber-400 text-amber-400" />
+            <div className="absolute -top-1 -right-1 bg-black rounded-full p-0.5 border border-white/10">
+              <Star size={10} className="fill-amber-400 text-amber-400" />
             </div>
           )}
         </div>
 
         <div className="flex-1 text-left overflow-hidden">
-          <div className="flex justify-between items-baseline mb-0.5">
-            <h3 className={`font-medium text-[15px] truncate transition-colors flex items-center gap-2 ${
-              activeContactId === contact.id ? 'text-white' : 'text-zinc-200 group-hover:text-white'
+          <div className="flex justify-between items-baseline">
+            <h3 className={`font-bold text-[15px] truncate transition-colors flex items-center gap-2 ${
+              activeContactId === contact.id ? 'text-black dark:text-white' : 'text-zinc-700 dark:text-zinc-300 group-hover:text-black dark:group-hover:text-white'
             }`}>
               {contact.name}
             </h3>
-            <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-wider">Online</span>
           </div>
-          <p className="text-xs text-zinc-400 truncate leading-tight group-hover:text-zinc-300 transition-colors font-light">
+          <p className="text-[12px] truncate leading-tight transition-colors font-medium text-zinc-500">
             {contact.lastMessage || contact.bio}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {onTogglePin && !contact.isSelf && (
-            <button 
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
               onClick={(e) => { e.stopPropagation(); onTogglePin(contact.id); }}
-              className={`p-2 rounded-full transition-all ${contact.isPinned ? 'text-white bg-white/10' : 'text-zinc-600 hover:text-white hover:bg-white/5 opacity-0 group-hover:opacity-100'}`}
+              className={`p-2 rounded-full transition-all ${contact.isPinned ? 'text-white bg-indigo-600' : 'text-zinc-500 hover:text-white hover:bg-white/5 opacity-0 group-hover:opacity-100'}`}
             >
               <Pin size={14} className={contact.isPinned ? "fill-white" : ""} />
-            </button>
-          )}
-          {activeContactId === contact.id && (
-            <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+            </motion.button>
           )}
         </div>
       </motion.div>
@@ -131,11 +128,11 @@ const ChatList: React.FC<ChatListProps> = ({
           onClick={onAddStory}
           className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group"
         >
-          <div className="w-16 h-16 rounded-full bg-zinc-900 border-2 border-dashed border-zinc-700 flex items-center justify-center group-hover:border-indigo-500 transition-colors relative overflow-hidden">
+          <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-900 border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center group-hover:border-indigo-500 transition-colors relative overflow-hidden">
             <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <span className="text-2xl text-zinc-500 group-hover:text-indigo-400 transition-colors">+</span>
+            <span className="text-2xl text-zinc-400 dark:text-zinc-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">+</span>
           </div>
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest group-hover:text-white transition-colors">История</span>
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest group-hover:text-black dark:group-hover:text-white transition-colors">История</span>
         </div>
         
         {stories.map((group, i) => {
@@ -146,8 +143,8 @@ const ChatList: React.FC<ChatListProps> = ({
               onClick={() => handleStoryClick(group)}
               className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group"
             >
-              <div className={`w-16 h-16 rounded-full p-[2px] transition-all duration-500 ${isViewed ? 'bg-zinc-700' : 'bg-gradient-to-tr from-indigo-500 to-purple-500'}`}>
-                <div className="w-full h-full rounded-full border-2 border-[#121212] overflow-hidden">
+              <div className={`w-16 h-16 rounded-full p-[2px] transition-all duration-500 ${isViewed ? 'bg-zinc-300 dark:bg-zinc-700' : 'bg-gradient-to-tr from-indigo-500 to-purple-500'}`}>
+                <div className="w-full h-full rounded-full border-2 border-white dark:border-black overflow-hidden">
                   <img 
                     src={group.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${group.name}`} 
                     alt="Story" 
@@ -240,8 +237,8 @@ const ChatList: React.FC<ChatListProps> = ({
           animate={{ opacity: 1 }}
           className="flex flex-col items-center justify-center h-full text-zinc-700 p-8 text-center mt-10"
         >
-          <div className="w-16 h-16 bg-zinc-900/50 rounded-[1.5rem] flex items-center justify-center mb-6 border border-zinc-800">
-             <Zap size={24} className="opacity-20 animate-pulse" />
+          <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-900/50 rounded-[1.5rem] flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-800">
+             <Zap size={24} className="opacity-20 animate-pulse text-black dark:text-white" />
           </div>
           <p className="text-sm font-bold text-zinc-500">Сигнал потерян</p>
           <p className="text-[9px] mt-2 opacity-40 uppercase tracking-widest font-black leading-relaxed">Ожидание P2P партнеров...</p>

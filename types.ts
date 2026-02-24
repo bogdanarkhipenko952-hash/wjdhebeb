@@ -1,6 +1,6 @@
 
 export type Role = 'user' | 'assistant';
-export type MessageType = 'text' | 'voice' | 'video_circle' | 'gift' | 'image' | 'video' | 'list' | 'file' | 'location' | 'sticker';
+export type MessageType = 'text' | 'voice' | 'video_circle' | 'gift' | 'image' | 'video' | 'list' | 'file' | 'location' | 'sticker' | 'transfer';
 
 export interface NFTGift {
   id: string;
@@ -29,8 +29,11 @@ export interface Message {
   location?: { lat: number; lng: number; address?: string };
   fileSize?: string;
   fileName?: string;
+  amount?: number;
+  currency?: string;
   timestamp: Date;
   status: 'sent' | 'delivered' | 'read';
+  reactions?: { emoji: string; users: string[] }[];
 }
 
 export interface Contact {

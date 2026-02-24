@@ -27,7 +27,7 @@ const Avatar: React.FC<AvatarProps> = ({ src, name, status, size = 'md' }) => {
       <img
         src={src || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
         alt={name}
-        className={`${sizeClasses[size]} rounded-full object-cover ring-2 ring-zinc-900 shadow-lg`}
+        className={`${sizeClasses[size]} rounded-full object-cover ring-2 ring-black shadow-lg`}
         onError={(e) => {
           (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`;
         }}

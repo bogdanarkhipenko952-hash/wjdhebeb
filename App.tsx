@@ -56,6 +56,42 @@ function App() {
   const [archived, setArchived] = useState<Set<string>>(new Set());
   const [ws, setWs] = useState<WebSocket | null>(null);
 
+  // Settings State
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('pulse_settings');
+    return saved ? JSON.parse(saved) : {
+      notifications: true,
+      privacy: true,
+      theme: 'system' as 'system' | 'dark' | 'light'
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('pulse_settings', JSON.stringify(settings));
+    
+    const applyTheme = (theme: string) => {
+      const root = window.document.documentElement;
+      if (theme === 'dark') {
+        root.classList.add('dark');
+      } else if (theme === 'light') {
+        root.classList.remove('dark');
+      } else {
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (systemDark) root.classList.add('dark');
+        else root.classList.remove('dark');
+      }
+    };
+
+    applyTheme(settings.theme);
+
+    if (settings.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => applyTheme('system');
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [settings.theme]);
+
   const [userProfile, setUserProfile] = useState<UserProfile>(user || {
     id: '',
     name: '',
@@ -117,6 +153,8 @@ function App() {
               type: msg.type || 'text',
               content: msg.content,
               mediaUrl: msg.mediaUrl,
+              amount: msg.amount,
+              currency: msg.currency,
               timestamp: new Date(msg.timestamp),
               status: 'delivered'
             }]
@@ -342,6 +380,20 @@ function App() {
   }, [peers, savedMessagesContact, favorites, plusBot, archived]);
 
   const handleSendToNetwork = (receiverId: string, message: Message) => {
+    if (message.type === 'transfer' && message.amount) {
+      if (userBalance < message.amount) {
+        alert('Недостаточно средств!');
+        return;
+      }
+      setUserBalance(prev => prev - message.amount!);
+    }
+
+    // Update local state immediately for optimistic UI
+    setNetworkMessages(prev => ({
+      ...prev,
+      [receiverId]: [...(prev[receiverId] || []), { ...message, timestamp: new Date() }]
+    }));
+
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'CHAT_MESSAGE',
@@ -350,7 +402,28 @@ function App() {
           receiverId,
           content: message.content,
           msgType: message.type,
-          mediaUrl: message.mediaUrl
+          mediaUrl: message.mediaUrl,
+          amount: message.amount,
+          currency: message.currency
+        }
+      }));
+    }
+  };
+
+  const handleUpdateMessage = (receiverId: string, updatedMsg: Message) => {
+    setNetworkMessages(prev => ({
+      ...prev,
+      [receiverId]: (prev[receiverId] || []).map(m => m.id === updatedMsg.id ? updatedMsg : m)
+    }));
+    
+    // In a real app, you would also broadcast this reaction update via WebSocket
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'MESSAGE_REACTION',
+        payload: {
+          receiverId,
+          messageId: updatedMsg.id,
+          reactions: updatedMsg.reactions
         }
       }));
     }
@@ -456,8 +529,17 @@ function App() {
   const fetchMessages = async (peerId: string) => {
     if (!user) return;
     try {
+      if (!user.id || !peerId) {
+        console.error('fetchMessages called with empty user.id or peerId', { userId: user.id, peerId });
+        return;
+      }
       const res = await fetch(`/api/messages/${user.id}/${peerId}`);
       if (res.ok) {
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+          console.error('fetchMessages received HTML instead of JSON. URL:', `/api/messages/${user.id}/${peerId}`);
+          return;
+        }
         const msgs = await res.json();
         setNetworkMessages(prev => ({
           ...prev,
@@ -467,6 +549,8 @@ function App() {
             type: m.type || 'text',
             content: m.content,
             mediaUrl: m.media_url,
+            amount: m.amount,
+            currency: m.currency,
             timestamp: new Date(m.timestamp),
             status: 'delivered'
           }))
@@ -509,16 +593,16 @@ function App() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex h-full w-full text-white overflow-hidden font-sans bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-800 via-zinc-950 to-black"
+      className="flex h-full w-full text-black dark:text-white overflow-hidden font-sans bg-white dark:bg-black"
     >
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-20 border-r border-zinc-800 bg-[#0a0a0a] items-center py-8 shrink-0">
+      <aside className="hidden lg:flex flex-col w-20 border-r border-black/5 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0a0a0a] items-center py-8 shrink-0">
         <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center mb-10 shadow-[0_0_20px_rgba(79,70,229,0.3)]">
-          <Command size={24} />
+          <Command size={24} className="text-white" />
         </div>
         <nav className="flex flex-col gap-8">
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`p-3 rounded-xl transition-all ${activeTab === tab.id ? 'text-indigo-400 bg-indigo-400/10' : 'text-zinc-500 hover:text-zinc-200'}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`p-3 rounded-xl transition-all ${activeTab === tab.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-600/10 dark:bg-indigo-400/10' : 'text-zinc-400 dark:text-zinc-500 hover:text-black dark:hover:text-zinc-200'}`}>
               <tab.icon size={24} />
             </button>
           ))}
@@ -651,12 +735,29 @@ function App() {
         
         {/* Dynamic Island Header - Removed as per request */}
 
-        <section className={`flex flex-col h-full shrink-0 border-r border-zinc-800 w-full md:w-80 lg:w-[400px] bg-[#121212] z-10 ${selectedContact ? 'hidden md:flex' : 'flex'}`}>
+        <section className={`flex flex-col h-full shrink-0 border-r border-black/5 dark:border-zinc-800 w-full md:w-80 lg:w-[400px] bg-white dark:bg-[#121212] z-10 ${selectedContact ? 'hidden md:flex' : 'flex'}`}>
           {activeTab === 'chats' && (
             <header className="p-6 shrink-0 pt-10">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <Zap size={22} className="text-white" />
+                  </div>
+                  <h1 className="text-2xl font-black tracking-tighter text-black dark:text-white">PULSE</h1>
+                </div>
+                <div className="flex items-center gap-2">
+                  <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowAddPeerModal(true)}
+                    className="p-2.5 text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white bg-black/5 dark:bg-white/5 rounded-full transition-colors"
+                  >
+                    <Plus size={20} />
+                  </motion.button>
+                </div>
+              </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Поиск..." className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-3 pl-11 pr-4 text-[15px] outline-none focus:border-indigo-500/50 transition-all" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Поиск..." className="w-full bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl py-3 pl-11 pr-4 text-[15px] outline-none focus:border-indigo-500/50 transition-all text-black dark:text-white placeholder:text-zinc-500" />
               </div>
             </header>
           )}
@@ -960,7 +1061,7 @@ function App() {
                   transition={{ duration: 0.2 }}
                   className="p-6 pt-10 space-y-6 pb-36"
                 >
-                  <h2 className="text-2xl font-bold text-white mb-2 pl-2">Настройки</h2>
+                  <h2 className="text-2xl font-bold text-black dark:text-white mb-2 pl-2">Настройки</h2>
                   
                   {/* Accounts Section */}
                   <div className="space-y-3">
@@ -970,20 +1071,20 @@ function App() {
                         <div 
                           key={acc.id}
                           onClick={() => switchAccount(acc.id)}
-                          className={`flex items-center gap-4 p-4 rounded-3xl border transition-all cursor-pointer ${acc.id === user?.id ? 'bg-indigo-600/10 border-indigo-500/50' : 'bg-zinc-900/50 border-zinc-800/50 hover:bg-zinc-800'}`}
+                          className={`flex items-center gap-4 p-4 rounded-3xl border transition-all cursor-pointer ${acc.id === user?.id ? 'bg-indigo-600/10 border-indigo-500/50' : 'bg-zinc-100 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800/50 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                         >
                           <Avatar src={acc.avatar} name={acc.name} size="md" />
                           <div className="flex-1">
-                            <h4 className="font-medium text-sm">{acc.name}</h4>
-                            <p className="text-[10px] text-zinc-400 font-mono">@{acc.username}</p>
+                            <h4 className="font-medium text-sm text-black dark:text-white">{acc.name}</h4>
+                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">@{acc.username}</p>
                           </div>
-                          {acc.id === user?.id && <CheckCircle2 size={18} className="text-indigo-400" />}
+                          {acc.id === user?.id && <CheckCircle2 size={18} className="text-indigo-500 dark:text-indigo-400" />}
                         </div>
                       ))}
                       {accounts.length < 3 && (
                         <button 
                           onClick={handleLogout}
-                          className="w-full p-4 bg-zinc-900/30 border border-dashed border-zinc-800 rounded-3xl flex items-center justify-center gap-2 text-zinc-500 hover:text-white hover:border-zinc-600 transition-all"
+                          className="w-full p-4 bg-zinc-100/50 dark:bg-zinc-900/30 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-3xl flex items-center justify-center gap-2 text-zinc-500 hover:text-black dark:hover:text-white hover:border-zinc-400 dark:hover:border-zinc-600 transition-all"
                         >
                           <Plus size={18} />
                           <span className="text-[10px] font-bold uppercase tracking-widest">Добавить аккаунт</span>
@@ -991,6 +1092,79 @@ function App() {
                       )}
                     </div>
                   </div>
+
+                  {/* Settings Sections */}
+                  <div className="space-y-4">
+                    <div className="bg-zinc-100 dark:bg-zinc-900/50 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 overflow-hidden">
+                      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
+                            <BellRing size={18} />
+                          </div>
+                          <span className="text-sm font-medium text-black dark:text-white">Уведомления</span>
+                        </div>
+                        <button 
+                          onClick={() => setSettings(prev => ({ ...prev, notifications: !prev.notifications }))}
+                          className={`w-10 h-6 rounded-full transition-colors relative ${settings.notifications ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                        >
+                          <motion.div 
+                            animate={{ x: settings.notifications ? 18 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+                      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
+                            <Lock size={18} />
+                          </div>
+                          <span className="text-sm font-medium text-black dark:text-white">Приватность</span>
+                        </div>
+                        <button 
+                          onClick={() => setSettings(prev => ({ ...prev, privacy: !prev.privacy }))}
+                          className={`w-10 h-6 rounded-full transition-colors relative ${settings.privacy ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                        >
+                          <motion.div 
+                            animate={{ x: settings.privacy ? 18 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
+                            <Moon size={18} />
+                          </div>
+                          <span className="text-sm font-medium text-black dark:text-white">Тема оформления</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: 'system', label: 'Система' },
+                            { id: 'light', label: 'Светлая' },
+                            { id: 'dark', label: 'Тёмная' }
+                          ].map(t => (
+                            <button 
+                              key={t.id}
+                              onClick={() => setSettings(prev => ({ ...prev, theme: t.id as any }))}
+                              className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${settings.theme === t.id ? 'bg-indigo-600 text-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-300 dark:hover:bg-zinc-700'}`}
+                            >
+                              {t.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-3xl flex items-center justify-center gap-2 text-red-500 hover:bg-red-500/20 transition-all"
+                    >
+                      <LogOut size={18} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Выйти из аккаунта</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
                   {/* Buy NFT Section - Featured */}
                   <div className="bg-gradient-to-br from-purple-900/20 to-zinc-900/50 rounded-3xl border border-purple-500/20 overflow-hidden">
@@ -1079,7 +1253,10 @@ function App() {
               onBack={() => setSelectedContact(null)} 
               initialHistory={networkMessages[currentSelectedContactWithFav.id] || []} 
               onSendMessage={msg => handleSendToNetwork(currentSelectedContactWithFav.id, msg)} 
+              onUpdateMessage={msg => handleUpdateMessage(currentSelectedContactWithFav.id, msg)}
               onViewProfile={setViewingContact}
+              onOpenGiftMarket={() => setShowGiftMarket(true)}
+              userBalance={userBalance}
             />
           ) : (
             <div className="text-center max-w-sm px-10 animate-in fade-in zoom-in-75 duration-1000">

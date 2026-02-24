@@ -50,6 +50,10 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
 
   const handleCredentialsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLogin && usernameStatus === 'taken') {
+      setError('Это имя пользователя уже занято');
+      return;
+    }
     if (formData.username.length >= 1 && formData.password.length >= 1) {
       setStep('2fa');
     }
@@ -93,27 +97,23 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
   };
 
   return (
-    <div className="h-full w-full bg-[#121212] flex flex-col items-center p-4 relative font-sans overflow-y-auto">
-      {/* Background Gradient */}
-      <div className="absolute top-0 left-0 right-0 h-[50vh] bg-gradient-to-b from-indigo-600/20 via-purple-900/10 to-transparent pointer-events-none" />
+    <div className="h-full w-full bg-black flex items-center justify-center p-4 relative font-sans overflow-y-auto">
+      {/* Background Image/Pattern */}
+      <div className="absolute inset-0 pointer-events-none opacity-10" style={{ backgroundImage: 'url("https://picsum.photos/seed/dark/1920/1080?blur=10")', backgroundSize: 'cover', backgroundPosition: 'center' }} />
       
-      {/* Header */}
-      <div className="w-full max-w-md flex justify-between items-center pt-8 pb-12 relative z-10">
-        <div className="w-8" /> {/* Spacer for centering */}
-        <div className="flex items-center gap-2">
-          <Zap size={28} className="text-indigo-500 fill-indigo-500" />
-          <span className="text-2xl font-bold text-white tracking-wide">Plus messenger</span>
-        </div>
-        <button className="text-zinc-400 hover:text-white transition-colors">
-          <HelpCircle size={24} />
-        </button>
-      </div>
-
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md relative z-10 flex flex-col flex-1"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="w-full max-w-[480px] bg-[#1a1a1a] sm:shadow-2xl rounded-[30px] p-8 relative z-10 flex flex-col border border-white/5"
       >
+        <div className="flex justify-center mb-8">
+          <div className="flex items-center gap-2">
+            <Zap size={32} className="text-indigo-500 fill-indigo-500" />
+            <span className="text-2xl font-bold text-white tracking-tight">Pulse messenger</span>
+          </div>
+        </div>
+
         <AnimatePresence mode="wait">
           {step === 'credentials' ? (
             <motion.div 
@@ -121,87 +121,91 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="flex flex-col flex-1"
+              className="flex flex-col"
             >
-              <div className="text-center mb-8">
-                <h1 className="text-[26px] leading-tight font-bold text-white mb-3">
-                  {isLogin ? 'Вход в аккаунт' : 'Регистрация'}
+              <div className="text-center mb-6">
+                <h1 className="text-[24px] font-bold text-white mb-2">
+                  {isLogin ? 'С возвращением!' : 'Создать аккаунт'}
                 </h1>
-                <p className="text-zinc-400 text-[15px]">
-                  Введите имя пользователя и пароль
+                <p className="text-zinc-500 text-[16px]">
+                  {isLogin ? 'Мы рады видеть вас снова' : 'Присоединяйтесь к Pulse сегодня'}
                 </p>
               </div>
 
-              <div className="flex bg-[#3a3a3c] p-1 rounded-2xl mb-8">
-                <button 
-                  onClick={() => { setIsLogin(true); setError(''); }}
-                  className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${isLogin ? 'bg-zinc-700 text-white shadow-lg' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  Вход
-                </button>
-                <button 
-                  onClick={() => { setIsLogin(false); setError(''); }}
-                  className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${!isLogin ? 'bg-zinc-700 text-white shadow-lg' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  Регистрация
-                </button>
-              </div>
-
-              <form onSubmit={handleCredentialsSubmit} className="flex-1 flex flex-col space-y-4">
+              <form onSubmit={handleCredentialsSubmit} className="flex flex-col space-y-4">
                 {!isLogin && (
-                  <div className="bg-[#3a3a3c] rounded-2xl p-4 flex items-center gap-3">
-                    <User className="text-zinc-400" size={20} />
-                    <input 
-                      type="text" 
-                      required
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                      placeholder="Ваше имя" 
-                      className="flex-1 bg-transparent text-white text-lg outline-none placeholder:text-zinc-500"
-                    />
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Имя</label>
+                    <div className="bg-black rounded-[20px] p-3.5 flex items-center gap-3 border border-white/5 focus-within:border-indigo-500 transition-all">
+                      <input 
+                        type="text" 
+                        required
+                        value={formData.name}
+                        onChange={e => setFormData({...formData, name: e.target.value})}
+                        className="flex-1 bg-transparent text-white text-[16px] outline-none placeholder:text-zinc-700"
+                        placeholder="Ваше имя"
+                      />
+                    </div>
                   </div>
                 )}
 
-                <div className="bg-[#3a3a3c] rounded-2xl p-4 flex items-center gap-3 relative">
-                  <AtSign className="text-zinc-400" size={20} />
-                  <input 
-                    type="text" 
-                    required
-                    value={formData.username}
-                    onChange={e => handleUsernameChange(e.target.value)}
-                    placeholder="username" 
-                    className="flex-1 bg-transparent text-white text-lg outline-none placeholder:text-zinc-500 font-mono"
-                  />
-                  {!isLogin && (
-                    <div className="absolute right-4">
-                      {usernameStatus === 'checking' && <Loader2 size={18} className="text-zinc-500 animate-spin" />}
-                      {usernameStatus === 'available' && <CheckCircle2 size={18} className="text-emerald-500" />}
-                      {usernameStatus === 'taken' && <XCircle size={18} className="text-red-500" />}
-                    </div>
-                  )}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
+                    Username <span className="text-red-500">*</span>
+                  </label>
+                  <div className="bg-black rounded-[20px] p-3.5 flex items-center gap-3 relative border border-white/5 focus-within:border-indigo-500 transition-all">
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.username}
+                      onChange={e => handleUsernameChange(e.target.value)}
+                      className="flex-1 bg-transparent text-white text-[16px] outline-none placeholder:text-zinc-700"
+                      placeholder="username"
+                    />
+                    {!isLogin && (
+                      <div className="absolute right-4">
+                        {usernameStatus === 'checking' && <Loader2 size={16} className="text-zinc-500 animate-spin" />}
+                        {usernameStatus === 'available' && <CheckCircle2 size={16} className="text-emerald-500" />}
+                        {usernameStatus === 'taken' && <XCircle size={16} className="text-red-500" />}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="bg-[#3a3a3c] rounded-2xl p-4 flex items-center gap-3">
-                  <Lock className="text-zinc-400" size={20} />
-                  <input 
-                    type="password" 
-                    required
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                    placeholder="Пароль" 
-                    className="flex-1 bg-transparent text-white text-lg outline-none placeholder:text-zinc-500"
-                  />
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">
+                    Пароль <span className="text-red-500">*</span>
+                  </label>
+                  <div className="bg-black rounded-[20px] p-3.5 flex items-center gap-3 border border-white/5 focus-within:border-indigo-500 transition-all">
+                    <input 
+                      type="password" 
+                      required
+                      value={formData.password}
+                      onChange={e => setFormData({...formData, password: e.target.value})}
+                      className="flex-1 bg-transparent text-white text-[16px] outline-none placeholder:text-zinc-700"
+                      placeholder="••••••••"
+                    />
+                  </div>
                 </div>
 
-                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                {error && <p className="text-red-500 text-[14px] mt-2 text-center">{error}</p>}
 
-                <div className="mt-auto pt-8 pb-4">
+                <motion.button 
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={!isLogin && usernameStatus === 'taken'}
+                  className="w-full py-4 mt-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[20px] font-bold text-[16px] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+                >
+                  Продолжить
+                </motion.button>
+
+                <div className="mt-4 text-center">
                   <button 
-                    type="submit"
-                    disabled={formData.username.length < 1 || formData.password.length < 1 || (!isLogin && (!formData.name || usernameStatus !== 'available'))}
-                    className="w-full py-4 rounded-[20px] font-bold text-[17px] transition-all disabled:bg-[#3a3a3c] disabled:text-zinc-500 bg-white text-black hover:bg-zinc-200"
+                    type="button"
+                    onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                    className="text-indigo-400 hover:text-indigo-300 text-[14px] font-medium transition-colors"
                   >
-                    Продолжить
+                    {isLogin ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
                   </button>
                 </div>
               </form>
@@ -212,47 +216,49 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col flex-1"
+              className="flex flex-col"
             >
-              <div className="text-center mb-8">
-                <h1 className="text-[26px] leading-tight font-bold text-white mb-3">Второй пароль</h1>
-                <p className="text-zinc-400 text-[15px]">
-                  {isLogin ? 'Введите ваш второй пароль для входа' : 'Придумайте второй пароль для защиты аккаунта'}
+              <div className="text-center mb-6">
+                <h1 className="text-[24px] font-bold text-white mb-2">2FA Подтверждение</h1>
+                <p className="text-zinc-500 text-[16px]">
+                  Введите 6-значный код из приложения
                 </p>
               </div>
 
-              <form onSubmit={handle2FASubmit} className="flex-1 flex flex-col">
-                <div className="bg-[#3a3a3c] rounded-2xl p-4 mb-4 flex items-center gap-3">
-                  <Lock className="text-zinc-400" size={20} />
-                  <input 
-                    type="password" 
-                    required
-                    value={formData.twoFactorCode}
-                    onChange={e => setFormData({...formData, twoFactorCode: e.target.value})}
-                    placeholder="Второй пароль" 
-                    className="w-full bg-transparent text-white text-lg outline-none placeholder:text-zinc-500"
-                    autoFocus
-                  />
+              <form onSubmit={handle2FASubmit} className="flex flex-col space-y-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Код</label>
+                  <div className="bg-black rounded-[20px] p-4 flex items-center justify-center border border-white/5 focus-within:border-indigo-500 transition-all">
+                    <input 
+                      type="text" 
+                      required
+                      maxLength={6}
+                      value={formData.twoFactorCode}
+                      onChange={e => setFormData({...formData, twoFactorCode: e.target.value.replace(/\D/g, '')})}
+                      placeholder="000 000" 
+                      className="bg-transparent text-white text-[28px] tracking-[0.3em] text-center outline-none placeholder:text-zinc-800 font-bold"
+                    />
+                  </div>
                 </div>
-                
-                {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
 
-                <div className="mt-auto pt-8 pb-4">
-                  <button 
-                    type="submit"
-                    disabled={formData.twoFactorCode.length < 4 || loading}
-                    className="w-full py-4 rounded-[20px] font-bold text-[17px] transition-all disabled:bg-[#3a3a3c] disabled:text-zinc-500 bg-white text-black hover:bg-zinc-200 flex justify-center items-center"
-                  >
-                    {loading ? 'Загрузка...' : (isLogin ? 'Войти' : 'Завершить регистрацию')}
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => { setStep('credentials'); setError(''); }}
-                    className="w-full py-4 mt-2 rounded-[20px] font-bold text-[15px] text-zinc-400 hover:text-white transition-colors"
-                  >
-                    Назад
-                  </button>
-                </div>
+                {error && <p className="text-red-500 text-[14px] text-center">{error}</p>}
+
+                <motion.button 
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={loading || formData.twoFactorCode.length < 6}
+                  className="w-full py-4 mt-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[20px] font-bold text-[16px] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : 'Подтвердить'}
+                </motion.button>
+
+                <button 
+                  type="button"
+                  onClick={() => setStep('credentials')}
+                  className="w-full py-2 mt-2 text-zinc-500 hover:text-white transition-colors text-[14px] font-medium"
+                >
+                  Вернуться назад
+                </button>
               </form>
             </motion.div>
           )}

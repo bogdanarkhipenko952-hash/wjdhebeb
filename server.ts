@@ -177,7 +177,11 @@ async function startServer() {
       OR (sender_id = ? AND receiver_id = ?)
       ORDER BY timestamp ASC
     `).all(userId, peerId, peerId, userId);
-    res.json(messages);
+    res.json(messages.map((m: any) => ({
+      ...m,
+      amount: m.amount,
+      currency: m.currency
+    })));
   });
 
   // WebSocket for Real-time
@@ -187,38 +191,58 @@ async function startServer() {
     let userId: string | null = null;
 
     ws.on('message', (data) => {
-      const message = JSON.parse(data.toString());
-      
-      if (message.type === 'AUTH') {
-        userId = message.userId;
-        clients.set(userId!, ws);
-        console.log(`User ${userId} connected`);
-      }
-
-      if (message.type === 'CHAT_MESSAGE') {
-        const { senderId, receiverId, content, msgType, mediaUrl } = message.payload;
-        const id = uuidv4();
-        db.prepare('INSERT INTO messages (id, sender_id, receiver_id, content, type, media_url) VALUES (?, ?, ?, ?, ?, ?)')
-          .run(id, senderId, receiverId, content, msgType || 'text', mediaUrl || null);
+      try {
+        const message = JSON.parse(data.toString());
         
-        const msgData = {
-          type: 'NEW_MESSAGE',
-          payload: { id, senderId, receiverId, content, type: msgType || 'text', mediaUrl: mediaUrl || null, timestamp: new Date().toISOString() }
-        };
-
-        // Send to receiver if online
-        const receiverWs = clients.get(receiverId);
-        if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
-          receiverWs.send(JSON.stringify(msgData));
+        if (message.type === 'AUTH') {
+          userId = message.userId;
+          if (userId) {
+            clients.set(userId, ws);
+            console.log(`User ${userId} connected`);
+          }
         }
-        
-        // Send back to sender for confirmation
-        ws.send(JSON.stringify(msgData));
+
+        if (message.type === 'CHAT_MESSAGE') {
+          const { senderId, receiverId, content, msgType, mediaUrl, amount, currency } = message.payload;
+          const id = uuidv4();
+          db.prepare('INSERT INTO messages (id, sender_id, receiver_id, content, type, media_url, amount, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+            .run(id, senderId, receiverId, content, msgType || 'text', mediaUrl || null, amount || null, currency || null);
+          
+          const msgData = {
+            type: 'NEW_MESSAGE',
+            payload: { 
+              id, 
+              senderId, 
+              receiverId, 
+              content, 
+              type: msgType || 'text', 
+              mediaUrl: mediaUrl || null, 
+              amount: amount || null,
+              currency: currency || null,
+              timestamp: new Date().toISOString() 
+            }
+          };
+
+          // Send to receiver if online
+          const receiverWs = clients.get(receiverId);
+          if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
+            receiverWs.send(JSON.stringify(msgData));
+          }
+          
+          // Send back to sender for confirmation
+          ws.send(JSON.stringify(msgData));
+        }
+      } catch (e) {
+        console.error('WebSocket message error:', e);
       }
     });
 
     ws.on('close', () => {
       if (userId) clients.delete(userId);
+    });
+
+    ws.on('error', (e) => {
+      console.error('WebSocket error:', e);
     });
   });
 
